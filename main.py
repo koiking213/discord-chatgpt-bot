@@ -4,12 +4,21 @@ import os
 import time
 import discord
 import re
+import typing
+import functools
+import asyncio
 
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 discord_token = os.getenv("DISCORD_BOT_TOKEN")
 
+def to_thread(func: typing.Callable) -> typing.Coroutine:
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs):
+        return await asyncio.to_thread(func, *args, **kwargs)
+    return wrapper
 
+@to_thread
 def get_response(content: str):
     initial_prompt="あなたは有能なアシスタントです。"
     
@@ -40,14 +49,15 @@ class MyClient(discord.Client):
     async def on_message(self, message):
         print(f'Message from {message.author}: {message.content}')
         if "chatgpt-bot" in [m.name for m in message.mentions]:
-            pattern = r'^<.*?>\s'
-            content = re.sub(pattern, "", message.content)
-            response = get_response(content)
-            print(response)
-            print(len(response))
-            length = len(response)
-            for i in range(((length-1)//1000)+1):
-                await message.channel.send(response[i*1000:(i+1)*1000])
+            async with message.channel.typing():
+                pattern = r'^<.*?>\s'
+                content = re.sub(pattern, "", message.content)
+                response = await get_response(content)
+                print(response)
+                print(len(response))
+                length = len(response)
+                for i in range(((length-1)//1000)+1):
+                    await message.channel.send(response[i*1000:(i+1)*1000])
 
 intents = discord.Intents.default()
 intents.message_content = True

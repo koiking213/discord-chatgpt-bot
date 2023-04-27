@@ -1,0 +1,9 @@
+version: "3.8"
+services:
+  app:
+    build: .
+    volumes:
+      - ./main.py:/app/main.py
+      - ./.env:/app/.env
+    command: poetry run python main.py
+

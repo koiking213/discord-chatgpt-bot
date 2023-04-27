@@ -7,10 +7,15 @@ import re
 import typing
 import functools
 import asyncio
+import yaml
 
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 discord_token = os.getenv("DISCORD_BOT_TOKEN")
+with open("config.yaml", "r") as f:
+    config = yaml.safe_load(f)
+chat_gpt_model = config["chat_gpt_model"]
+bot_name = config["bot_name"]
 
 def to_thread(func: typing.Callable) -> typing.Coroutine:
     @functools.wraps(func)
@@ -24,7 +29,7 @@ def get_response(content: str):
     
     start = time.time()
     response = openai.ChatCompletion.create(
-      model="gpt-3.5-turbo",
+      model=chat_gpt_model,
       messages=[
             {"role": "system", "content": initial_prompt},
             {"role": "user", "content": content},
@@ -48,7 +53,7 @@ class MyClient(discord.Client):
 
     async def on_message(self, message):
         print(f'Message from {message.author}: {message.content}')
-        if "chatgpt-bot" in [m.name for m in message.mentions]:
+        if bot_name in [m.name for m in message.mentions]:
             async with message.channel.typing():
                 pattern = r'^<.*?>\s'
                 content = re.sub(pattern, "", message.content)

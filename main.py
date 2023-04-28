@@ -6,7 +6,7 @@ import time
 import discord
 import re
 import typing
-from typing import Any, List, Dict
+from typing import Any, List, Dict, Callable, Coroutine
 import functools
 import asyncio
 import yaml
@@ -16,7 +16,6 @@ import yaml
 def create_chat_completion(model: str, messages: List[Dict[str, str]], stream: bool) -> Any:
     return ChatCompletion.create(model=model, messages=messages, stream=stream)
 
-
 load_dotenv()
 openai.api_key = os.environ["OPENAI_API_KEY"]
 discord_token = os.environ["DISCORD_BOT_TOKEN"]
@@ -25,7 +24,7 @@ with open("config.yaml", "r") as f:
 chat_gpt_model = config["chat_gpt_model"]
 bot_name = config["bot_name"]
 
-def to_thread(func: typing.Callable[..., Any]) -> typing.Callable[..., typing.Coroutine[Any, Any, Any]]:
+def to_thread(func: Callable[..., Any]) -> Callable[..., Coroutine[Any, Any, Any]]:
     @functools.wraps(func)
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
         return await asyncio.to_thread(func, *args, **kwargs)
@@ -47,7 +46,8 @@ def get_response(content: str) -> str:
 
     full_reply_content=""
     for chunk in response:
-        chunk_message = chunk['choices'][0]['delta'].get('content', '')  # extract the message
+        # extract the message
+        chunk_message = chunk['choices'][0]['delta'].get('content', '')
         full_reply_content += chunk_message
         print(chunk_message)
 

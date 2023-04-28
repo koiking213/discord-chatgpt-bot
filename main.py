@@ -100,6 +100,8 @@ class AssistantClient(discord.Client):
                         role = MessageRole.ASSISTANT
                     else:
                         role = MessageRole.USER
+                        # wrap content by user name (koiking213「hello!」)
+                        content = f"{old_message.author.display_name}「{content}」"
                     new_message = Message(role, content)
                     chat_messages.append(new_message)
                     print(new_message)

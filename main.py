@@ -54,18 +54,31 @@ def to_thread(func: Callable[..., Any]) -> Callable[..., Coroutine[Any, Any, Any
 def get_response(messages: List[Message]) -> str:
 
     start = time.time()
+    stream = False
     response = create_chat_completion(
       model=chat_gpt_model,
       messages=[m.to_dict() for m in messages],
-      stream=True
+      stream=stream
     )
 
     full_reply_content=""
-    for chunk in response:
-        # extract the message
-        chunk_message = chunk['choices'][0]['delta'].get('content', '')
-        full_reply_content += chunk_message
-        print(chunk_message)
+
+    if stream:
+        pass
+        #for chunk in response:
+        #    # extract the message
+        #    chunk_message = chunk['choices'][0]['delta'].get('content', '')
+        #    full_reply_content += chunk_message
+        #    #print(chunk_message)
+        #    print(chunk)
+    else:
+        full_reply_content = response.choices[0].message['content']
+        completion_tokens = response.usage['completion_tokens']
+        prompt_tokens = response.usage['prompt_tokens']
+        print(full_reply_content)
+        print(f'{completion_tokens=}')
+        print(f'{prompt_tokens=}')
+
 
     elapsed = time.time() - start
     print(f"{elapsed=}")

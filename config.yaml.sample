@@ -1,2 +1,9 @@
 chat_gpt_model: "gpt-3.5-turbo"
 bot_name: "bot-name"
+database:
+  use_database: false
+  host: "your_rds_endpoint"
+  port: 5432
+  dbname: "your_database_name"
+  user: "your_username"
+  password: "your_password"

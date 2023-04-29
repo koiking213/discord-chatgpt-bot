@@ -11,6 +11,7 @@ import functools
 import asyncio
 import yaml
 from enum import Enum
+from db import DataBaseManager
 
 
 class MessageRole(Enum):
@@ -43,6 +44,7 @@ with open("config.yaml", "r") as f:
     config = yaml.safe_load(f)
 chat_gpt_model = config["chat_gpt_model"]
 bot_name = config["bot_name"]
+use_database = config["database"]["use_database"]
 
 def to_thread(func: Callable[..., Any]) -> Callable[..., Coroutine[Any, Any, Any]]:
     @functools.wraps(func)
@@ -50,41 +52,12 @@ def to_thread(func: Callable[..., Any]) -> Callable[..., Coroutine[Any, Any, Any
         return await asyncio.to_thread(func, *args, **kwargs)
     return wrapper
 
-@to_thread
-def get_response(messages: List[Message]) -> str:
-
-    start = time.time()
-    stream = False
-    response = create_chat_completion(
-      model=chat_gpt_model,
-      messages=[m.to_dict() for m in messages],
-      stream=stream
-    )
-
-    full_reply_content=""
-
-    if stream:
-        pass
-        #for chunk in response:
-        #    # extract the message
-        #    chunk_message = chunk['choices'][0]['delta'].get('content', '')
-        #    full_reply_content += chunk_message
-        #    #print(chunk_message)
-        #    print(chunk)
-    else:
-        full_reply_content = response.choices[0].message['content']
-        completion_tokens = response.usage['completion_tokens']
-        prompt_tokens = response.usage['prompt_tokens']
-        print(full_reply_content)
-        print(f'{completion_tokens=}')
-        print(f'{prompt_tokens=}')
-
-
-    elapsed = time.time() - start
-    print(f"{elapsed=}")
-    return full_reply_content
-
 class AssistantClient(discord.Client):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        if use_database:
+            self.db = DataBaseManager(openai.api_key, "discord-bot")
+
     async def on_ready(self) -> None:
         print(f'Logged on as {self.user}!')
 
@@ -127,12 +100,50 @@ class AssistantClient(discord.Client):
                 print("Unknown channel type")
                 return
 
-            response = await get_response(messages)
+            response = await self.get_response(messages)
             print(response)
             print(len(response))
             length = len(response)
             for i in range(((length-1)//1000)+1):
                 await message.channel.send(response[i*1000:(i+1)*1000])
+
+    @to_thread
+    def get_response(self, messages: List[Message]) -> str:
+
+        start = time.time()
+        stream = False
+        response = create_chat_completion(
+          model=chat_gpt_model,
+          messages=[m.to_dict() for m in messages],
+          stream=stream
+        )
+
+        full_reply_content=""
+
+        if stream:
+            pass
+            #for chunk in response:
+            #    # extract the message
+            #    chunk_message = chunk['choices'][0]['delta'].get('content', '')
+            #    full_reply_content += chunk_message
+            #    #print(chunk_message)
+            #    print(chunk)
+        else:
+            full_reply_content = response.choices[0].message['content']
+            completion_tokens = response.usage['completion_tokens']
+            prompt_tokens = response.usage['prompt_tokens']
+            if use_database:
+                self.db.insert_transaction(sent_tokens=prompt_tokens, received_tokens=completion_tokens)
+            print(full_reply_content)
+            print(f'{completion_tokens=}')
+            print(f'{prompt_tokens=}')
+
+
+        elapsed = time.time() - start
+        print(f"{elapsed=}")
+        return full_reply_content
+
+
     
 def main() -> None:
     intents = discord.Intents.default()

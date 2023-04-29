@@ -6,8 +6,7 @@ from datetime import datetime, timedelta
 import atexit
 
 class DataBaseManager:
-    def __init__(self, api_key: str, app_name: str):
-        self.api_key = api_key
+    def __init__(self, app_name: str):
         self.app_name = app_name
 
         # load config
@@ -23,6 +22,7 @@ class DataBaseManager:
 
         load_dotenv()
         password = os.environ["DB_PASSWORD"]
+        self.api_key = os.environ["OPENAI_API_KEY"]
 
         assert(use_database)
 
@@ -40,13 +40,16 @@ class DataBaseManager:
         atexit.register(self.close_connection)
 
     def close_connection(self) -> None:
-        self.cursor.close()
+        self.cursor.close() # type: ignore
         self.conn.close()
 
     def insert_transaction(self, sent_tokens: float, received_tokens: float) -> None:
         timestamp = datetime.now()
         self.cursor.execute("SELECT id FROM models WHERE name = %s;", (self.model_name,))
-        model_id = self.cursor.fetchone()[0]
+        result = self.cursor.fetchone()
+        if result is None:
+            raise Exception("Model not found")
+        model_id = result[0]
         query = f"""
         INSERT INTO transactions (api_key, app_name, model_id, sent_tokens, received_tokens, timestamp)
         VALUES ('{self.api_key}', '{self.app_name}', {model_id}, {sent_tokens}, {received_tokens}, '{timestamp}');
@@ -98,7 +101,10 @@ class DataBaseManager:
         yesterday = now - timedelta(days=1)
 
         self.cursor.execute("SELECT id FROM models WHERE name = %s;", (model_name,))
-        model_id = self.cursor.fetchone()[0]
+        result = self.cursor.fetchone()
+        if result is None:
+            raise Exception("Model not found")
+        model_id = result[0]
 
         # set end_date of the previous record
         self.cursor.execute(
@@ -129,8 +135,8 @@ class DataBaseManager:
         self.conn.commit()
 
 
-def main():
-    db = DataBaseManager("sk-test", "test")
+def main() -> None:
+    db = DataBaseManager("test")
     db.initialize_tables()
     db.update_token_rate("gpt-4", 0.03, 0.06)
     db.update_token_rate("gpt-4-32k", 0.06, 0.12)

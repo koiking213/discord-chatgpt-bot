@@ -25,10 +25,10 @@ class Message:
         self.role = role
         self.content = content
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.role.value}: {self.content}"
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, str]:
         return {"role": self.role.value, "content": self.content}
 
 
@@ -56,7 +56,7 @@ class AssistantClient(discord.Client):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         if use_database:
-            self.db = DataBaseManager(openai.api_key, "discord-bot")
+            self.db = DataBaseManager("discord-bot")
 
     async def on_ready(self) -> None:
         print(f'Logged on as {self.user}!')
